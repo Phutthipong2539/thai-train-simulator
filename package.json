@@ -1,44 +1,21 @@
 {
-  "name": "thai-train-simulator",
+  "name": "server",
   "version": "1.0.0",
-  "description": "เกมจำลองการขับรถไฟเสมือนจริงของไทย",
-  "author": "Kittiphong <Phutthipong.Ongrak@gmail.com>",
-  "main": "main.js",
+  "main": "index.js",
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder",
-    "build-zip": "electron-builder --win dir && powershell -command \"Compress-Archive -Path dist\\win-unpacked\\* -DestinationPath dist\\update.zip -Force\""
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "build": {
-    "appId": "com.thaitrain.simulator",
-    "publish": {
-      "provider": "github",
-      "owner": "Phutthipong2539",
-      "repo": "thai-train-simulator"
-    },
-    "win": {
-      "target": "dir"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "license": "build/license.txt",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Thai Train Simulator"
-    },
-    "files": [
-      "**/*",
-      "!dist"
-    ],
-    "asar": true
-  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
   "dependencies": {
-    "electron-log": "^5.4.3",
-    "electron-updater": "^6.8.3"
-  },
-  "devDependencies": {
-    "electron": "^41.3.0",
-    "electron-builder": "^24.13.3"
+    "express": "^5.2.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "@google/generative-ai": "^0.21.0",
+    "ws": "^8.18.0",
+    "socket.io": "^4.7.4"
   }
 }
