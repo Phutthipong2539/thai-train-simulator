@@ -408,6 +408,7 @@ const analyticsFile = 'analytics.json';
 let dailyAnalytics = {
     totalLogins: 0,
     peakConcurrent: 0,
+    players: [], // เก็บรายชื่อผู้เล่นที่ไม่ซ้ำกัน
     date: new Date().toLocaleDateString()
 };
 
@@ -425,6 +426,12 @@ async function sendAnalyticsEmail(analyticsData, isMissedReport = false) {
         });
         const dateStr = analyticsData.date;
         const subjectPrefix = isMissedReport ? "[ส่งย้อนหลัง] " : "";
+        
+        let playerListHtml = "<li><em>ยังไม่มีข้อมูลรายชื่อผู้เล่น</em></li>";
+        if (analyticsData.players && analyticsData.players.length > 0) {
+            playerListHtml = analyticsData.players.map(name => `<li>🧑‍✈️ ${name}</li>`).join("");
+        }
+
         const mailOptions = {
             from: `"Thai Train Simulator" <${GMAIL_USER}>`,
             to: REPORT_RECEIVER,
@@ -434,6 +441,10 @@ async function sendAnalyticsEmail(analyticsData, isMissedReport = false) {
                 <ul>
                     <li><strong>ยอดเข้าเล่นเกมทั้งหมด (Total Logins):</strong> ${analyticsData.totalLogins} ครั้ง</li>
                     <li><strong>จำนวนผู้เล่นออนไลน์พร้อมกันสูงสุด (Peak CCU):</strong> ${analyticsData.peakConcurrent} คน</li>
+                </ul>
+                <h3>รายชื่อพนักงานขับรถของวันนี้:</h3>
+                <ul>
+                    ${playerListHtml}
                 </ul>
                 <p>ขอบคุณที่สร้างสรรค์เกมดีๆ ออกมาให้ทุกคนเล่นครับ! 🚂</p>
                 <br>
@@ -458,7 +469,7 @@ try {
                 sendAnalyticsEmail(dailyAnalytics, true);
             }
             // รีเซ็ตยอดเป็นของวันใหม่
-            dailyAnalytics = { totalLogins: 0, peakConcurrent: 0, date: new Date().toLocaleDateString() };
+            dailyAnalytics = { totalLogins: 0, peakConcurrent: 0, players: [], date: new Date().toLocaleDateString() };
         }
     }
 } catch (e) {
@@ -481,11 +492,24 @@ io.on('connection', (socket) => {
     saveAnalytics();
     
     socket.on('update_state', (data) => {
-        activePlayers[socket.id] = {
-            id: socket.id,
-            ...data,
-            lastUpdate: Date.now()
-        };
+        // อัปเดตข้อมูลผู้เล่น
+        activePlayers[socket.id] = { ...activePlayers[socket.id], ...data };
+        
+        // เก็บรายชื่อผู้เล่นรายวัน
+        if (data.playerName && typeof data.playerName === 'string') {
+            if (!dailyAnalytics.players) dailyAnalytics.players = [];
+            if (!dailyAnalytics.players.includes(data.playerName)) {
+                dailyAnalytics.players.push(data.playerName);
+                saveAnalytics();
+            }
+        }
+        
+        // ส่งข้อมูลให้ทุกคน
+        const stateArray = Object.values(activePlayers);
+        io.emit('players_state', stateArray);
+        
+        // Keep track of internal state for timeout
+        activePlayers[socket.id].lastUpdate = Date.now();
         
         // Join line room
         if (data.line) socket.join(data.line);
@@ -520,7 +544,7 @@ cron.schedule('0 20 * * *', async () => {
     await sendAnalyticsEmail(dailyAnalytics, false);
     
     // รีเซ็ตยอดรายวันหลังจากส่งเสร็จ
-    dailyAnalytics = { totalLogins: 0, peakConcurrent: 0, date: new Date().toLocaleDateString() };
+    dailyAnalytics = { totalLogins: 0, peakConcurrent: 0, players: [], date: new Date().toLocaleDateString() };
     saveAnalytics();
 });
 
