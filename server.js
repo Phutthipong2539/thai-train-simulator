@@ -6,6 +6,9 @@ const WebSocket = require('ws');
 const https = require('https');
 const http = require('http');
 const { Server } = require('socket.io');
+const fs = require('fs');
+const cron = require('node-cron');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const server = http.createServer(app);
@@ -397,11 +400,85 @@ app.post('/api/tts', async (req, res) => {
     }
 });
 
-// ====== SOCKET.IO MULTIPLAYER SYSTEM ======
+// ====== SOCKET.IO MULTIPLAYER & ANALYTICS SYSTEM ======
 const activePlayers = {};
+const analyticsFile = 'analytics.json';
+
+// โหลดสถิติปัจจุบัน (ถ้ามี)
+let dailyAnalytics = {
+    totalLogins: 0,
+    peakConcurrent: 0,
+    date: new Date().toLocaleDateString()
+};
+
+// ฟังก์ชันส่งอีเมล
+async function sendAnalyticsEmail(analyticsData, isMissedReport = false) {
+    const { GMAIL_USER, GMAIL_PASS, REPORT_RECEIVER } = process.env;
+    if (!GMAIL_USER || !GMAIL_PASS || !REPORT_RECEIVER) {
+        console.log("[Analytics] Email sending skipped: Missing Gmail config in .env");
+        return;
+    }
+    try {
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: { user: GMAIL_USER, pass: GMAIL_PASS }
+        });
+        const dateStr = analyticsData.date;
+        const subjectPrefix = isMissedReport ? "[ส่งย้อนหลัง] " : "";
+        const mailOptions = {
+            from: `"Thai Train Simulator" <${GMAIL_USER}>`,
+            to: REPORT_RECEIVER,
+            subject: `${subjectPrefix}รายงานสถิติผู้เล่นเกม Thai Train ประจำวันที่ ${dateStr}`,
+            html: `
+                <h2>สถิติผู้เล่นประจำวันที่ ${dateStr}</h2>
+                <ul>
+                    <li><strong>ยอดเข้าเล่นเกมทั้งหมด (Total Logins):</strong> ${analyticsData.totalLogins} ครั้ง</li>
+                    <li><strong>จำนวนผู้เล่นออนไลน์พร้อมกันสูงสุด (Peak CCU):</strong> ${analyticsData.peakConcurrent} คน</li>
+                </ul>
+                <p>ขอบคุณที่สร้างสรรค์เกมดีๆ ออกมาให้ทุกคนเล่นครับ! 🚂</p>
+                <br>
+                <small>รายงานสร้างอัตโนมัติจากเซิร์ฟเวอร์หลักของเกม</small>
+            `
+        };
+        await transporter.sendMail(mailOptions);
+        console.log(`[Analytics] Email sent successfully for ${dateStr}!`);
+    } catch (err) {
+        console.error("[Analytics] Error sending email:", err);
+    }
+}
+
+try {
+    if (fs.existsSync(analyticsFile)) {
+        dailyAnalytics = JSON.parse(fs.readFileSync(analyticsFile, 'utf8'));
+        // ถ้าระบบพึ่งเปิดแล้ววันที่เปลี่ยนไปแล้ว
+        if (dailyAnalytics.date !== new Date().toLocaleDateString()) {
+            // ถ้าเมื่อวานมีคนเล่น แต่ไม่ได้เปิดคอมตอน 2 ทุ่ม ให้ส่งย้อนหลังทันที
+            if (dailyAnalytics.totalLogins > 0 || dailyAnalytics.peakConcurrent > 0) {
+                console.log("[Analytics] Detected missed report from previous day. Sending now...");
+                sendAnalyticsEmail(dailyAnalytics, true);
+            }
+            // รีเซ็ตยอดเป็นของวันใหม่
+            dailyAnalytics = { totalLogins: 0, peakConcurrent: 0, date: new Date().toLocaleDateString() };
+        }
+    }
+} catch (e) {
+    console.error("Error loading analytics:", e);
+}
+
+function saveAnalytics() {
+    fs.writeFileSync(analyticsFile, JSON.stringify(dailyAnalytics, null, 2));
+}
 
 io.on('connection', (socket) => {
     console.log(`[Multiplayer] Player connected: ${socket.id}`);
+    
+    // อัปเดตสถิติ
+    dailyAnalytics.totalLogins += 1;
+    const currentCCU = Object.keys(activePlayers).length + 1;
+    if (currentCCU > dailyAnalytics.peakConcurrent) {
+        dailyAnalytics.peakConcurrent = currentCCU;
+    }
+    saveAnalytics();
     
     socket.on('update_state', (data) => {
         activePlayers[socket.id] = {
@@ -435,6 +512,17 @@ setInterval(() => {
         }
     }
 }, 5000);
+
+// ====== GMAIL ANALYTICS REPORTER ======
+// ส่งรายงานทุกๆ 20:00 น. ของทุกวัน (0 20 * * *)
+cron.schedule('0 20 * * *', async () => {
+    console.log("[Analytics] Preparing to send daily email report...");
+    await sendAnalyticsEmail(dailyAnalytics, false);
+    
+    // รีเซ็ตยอดรายวันหลังจากส่งเสร็จ
+    dailyAnalytics = { totalLogins: 0, peakConcurrent: 0, date: new Date().toLocaleDateString() };
+    saveAnalytics();
+});
 
 server.listen(port, () => {
     console.log(`Server listening at port ${port} with Socket.io Multiplayer`);
