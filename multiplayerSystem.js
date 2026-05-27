@@ -61,14 +61,35 @@ window.MultiplayerSystem = {
                 if (distMeters <= 500 && p.dir !== job.selectedDir) {
                     if (!this.remotePlayers[p.id].announced) {
                         this.remotePlayers[p.id].announced = true;
-                        if (window.speak) window.speak(`มีขบวนรถของเพื่อนกำลังสวนมาในระยะ 500 เมตรครับ`);
+                        
+                        let msg = "มีขบวนรถของเพื่อนกำลังสวนมาในระยะ 500 เมตรครับ";
+                        if (p.playerName && (p.playerName.toLowerCase().includes('test') || p.playerName.toLowerCase().includes('dev') || p.playerName.includes('ผู้พัฒนา'))) {
+                            msg = "มีรถ Test ของผู้พัฒนากำลังสวนมาในระยะ 500 เมตรครับ";
+                        } else if (p.trainNumber && p.trainNumber.toLowerCase().includes('test')) {
+                            msg = "มีรถ Test กำลังสวนมาในระยะ 500 เมตรครับ";
+                        }
+                        
+                        if (window.speak) window.speak(msg);
                     }
                 }
 
-                // เล่นเสียงเครื่องยนต์ตอนรถสวนกัน (ระยะประชิด 50 เมตร)
+                // เล่นเสียงเครื่องยนต์และประกาศตอนรถสวนกัน (ระยะประชิด 50 เมตร)
                 if (distMeters <= 50 && p.dir !== job.selectedDir) {
                     if (!this.remotePlayers[p.id].passed) {
                         this.remotePlayers[p.id].passed = true;
+                        
+                        // ประกาศตอนรถวิ่งผ่าน
+                        let passMsg = "";
+                        if (p.playerName && (p.playerName.toLowerCase().includes('test') || p.playerName.toLowerCase().includes('dev') || p.playerName.includes('ผู้พัฒนา'))) {
+                            passMsg = "รถ Test ของผู้พัฒนาวิ่งผ่านมาครับ";
+                        } else if (p.trainNumber && p.trainNumber.toLowerCase().includes('test')) {
+                            passMsg = "รถ Test วิ่งผ่านมาครับ";
+                        }
+                        
+                        if (passMsg && window.speak) {
+                            window.speak(passMsg);
+                        }
+
                         if (window.playPassingTrain) {
                             // คำนวณทิศทางเสียงอิงจากชานชาลาปัจจุบัน
                             let panDirection = 1.0; // ค่าเริ่มต้น เสียงมาทางขวา

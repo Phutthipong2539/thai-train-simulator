@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThaiTrain Simulator | Professional Edition</title>
+    <script>
+    window.onerror = function(msg, url, line) {
+        if (window.speak) {
+            const lowerMsg = msg ? msg.toLowerCase() : "";
+            // บล็อกการพูด error ที่เกี่ยวกับ Promise ทุกรูปแบบ
+            if (lowerMsg.includes("uncaught") || lowerMsg.includes("promise") || lowerMsg.includes("resizeobserver")) {
+                return; 
+            }
+            window.speak("มีเออเร่อ บรรทัดที่ " + line + " ข้อความคือ " + msg);
+        }
+    };
+    </script>
+    <link rel="stylesheet" href="ui/style.css?v=4">
+</head>
+
+<body role="application" aria-label="ThaiTrain Simulator" tabindex="0">
+
+    <header class="dashboard-v2">
+        <div class="dash-box box-speed">
+            <div class="box-title">ความเร็ว (SPEED)</div>
+            <div class="box-main" id="dash-speed">0</div>
+            <div class="box-sub">km/h | เป้าหมาย: <span id="dash-tgt-speed">0</span> | เกียร์: <span id="dash-reverser">N</span></div>
+        </div>
+        
+        <div class="dash-box box-air">
+            <div class="box-title">ระบบลม (AIR)</div>
+            <div class="box-main" id="dash-air">0.0</div>
+            <div class="box-sub">Bar | เบรก: <span id="dash-brake-status">READY</span></div>
+        </div>
+
+        <div class="dash-box box-fuel">
+            <div class="box-title">เชื้อเพลิง (FUEL)</div>
+            <div class="box-main" id="dash-fuel">0</div>
+            <div class="box-sub">ลิตร | อุณหภูมิ: <span id="dash-temp">40°C</span></div>
+        </div>
+
+        <div class="dash-box box-elec">
+            <div class="box-title">ระบบไฟฟ้า (ELEC)</div>
+            <div class="box-main" id="dash-batt">0.0</div>
+            <div class="box-sub">Ah | สะพานไฟ: <span id="dash-knife">OFF</span></div>
+        </div>
+    </header>
+
+    <main>
+        <div id="speed-reader" aria-live="assertive" role="alert">
+            ยินดีต้อนรับเข้าสู่ Train Simulator Thailand กรุณาไปรับกุญแจที่ห้องช่างโดยกด W
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-label">📍 สถานีเป้าหมาย</span>
+                <span id="dash-station" class="stat-value" style="font-size: 16px;">รอการเลือกขบวน</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">👥 ผู้โดยสารบนรถ</span>
+                <span id="pax-count" class="stat-value">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">📊 สถานะผู้โดยสาร</span>
+                <span id="job-status" class="stat-value" style="font-size: 16px;">-</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">💰 เงินทุนบริษัท</span>
+                <span id="wallet-display" class="stat-value" style="color: var(--success);">50,000 บาท</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">🔧 สภาพตัวรถไฟ</span>
+                <span id="condition-display" class="stat-value" style="color: var(--accent-color);">100%</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Popups -->
+    <div id="job-popup" style="display: none;">
+        <h2>📋 เลือกขบวนรถที่ต้องการขับ</h2>
+        <div id="job-list">
+            <!-- Dynamic Content -->
+        </div>
+        <button class="btn-close" onclick="JobSystem.closePopup()">ยกเลิก</button>
+    </div>
+
+    <div id="report-popup" style="display: none;">
+        <h2>📝 รายงานความพึงพอใจของผู้โดยสาร</h2>
+        <div id="report-list">
+            <!-- Dynamic Content -->
+        </div>
+    </div>
+
+    <div id="management-popup" style="display: none;">
+        <h2>🏢 บริหารจัดการบริษัทรถไฟ</h2>
+        <div id="management-list">
+            <!-- Dynamic Content -->
+        </div>
+    </div>
+
+    <div id="settings-popup" style="display: none;">
+        <h2>⚙️ ตั้งค่าระดับเสียง (Audio Settings)</h2>
+        <div id="settings-list">
+            <!-- Dynamic Content -->
+        </div>
+    </div>
+
+    <div id="ato-popup" style="display: none;">
+        <h2>🤖 เลือกใช้ระบบควบคุมรถอัตโนมัติ (Auto Pilot) หรือไม่?</h2>
+        <div id="ato-list">
+            <!-- Dynamic Content -->
+        </div>
+    </div>
+
+    <div id="login-popup" style="display: none;">
+        <h2>👤 ลงทะเบียนพนักงานขับรถ</h2>
+        <div id="login-content">
+            <!-- Dynamic Content -->
+        </div>
+    </div>
+
+    <!-- Employee ID Card -->
+    <div id="employee-card" style="display: none; position: fixed; top: 20px; right: 20px; background: rgba(10, 20, 30, 0.9); border: 2px solid var(--accent-color); padding: 15px; border-radius: 10px; z-index: 1000; min-width: 200px; box-shadow: 0 0 15px rgba(0,255,255,0.2);">
+        <div style="text-align: center; margin-bottom: 10px;">
+            <div style="font-size: 20px; font-weight: bold; color: var(--accent-color);">👤 บัตรพนักงาน</div>
+        </div>
+        <div style="font-size: 16px; margin-bottom: 5px;">ชื่อ: <span id="emp-name" style="color: white; font-weight: bold;">-</span></div>
+        <div style="font-size: 16px; margin-bottom: 5px;">รหัส: <span id="emp-pin" style="color: var(--warning); font-weight: bold;">***</span></div>
+        <div style="font-size: 16px;">ตำแหน่ง: <span style="color: var(--success); font-weight: bold;">พนักงานขับรถไฟ</span></div>
+    </div>
+
+    <!-- Core Scripts -->
+    <script src="core/config.js?v=3"></script>
+    <script src="core/trainState.js?v=5"></script>
+    
+    <!-- System Scripts -->
+    <script src="systems/stations.js?v=3"></script>
+    <script src="systems/announcementEffect.js?v=2"></script>
+    <script src="systems/stationEnforcer.js?v=2"></script>
+    <script src="systems/audioSystem.js?v=3"></script>
+
+
+
+    <script src="systems/job.js?v=12"></script>
+    <script src="systems/screenReader.js?v=12"></script>
+    <script src="systems/physicsSystem.js?v=12"></script>
+    <script src="systems/audioEffectSystem.js?v=12"></script>
+    <script src="systems/announcementSystem.js?v=12"></script>
+    <script src="systems/atoSystem.js?v=12"></script>
+    <script src="systems/doorSystem.js?v=12"></script>
+    <script src="systems/manualControl.js?v=14"></script>
+    <script src="systems/diagnosticSystem.js?v=12"></script>
+    <script src="systems/managementSystem.js?v=21"></script>
+    <script src="systems/settingsSystem.js?v=12"></script>
+    <script src="systems/saveGameSystem.js?v=13"></script>
+    <script src="systems/trafficSystem.js?v=12"></script>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <script src="systems/multiplayerSystem.js?v=13"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="systems/voiceChatSystem.js?v=1"></script>
+    <script src="systems/deadmanSystem.js?v=1"></script>
+    <script src="systems/loginSystem.js?v=5"></script>
+    
+    <!-- AI Core Scripts -->
+    <script src="ai_core/ai_eventManager.js"></script>
+    <script src="ai_core/ai_passenger.js"></script>
+    
+    <!-- UI & Orchestrator -->
+    <script src="ui/uiSystem.js"></script>
+    <script src="renderer.js?v=1000"></script>
+
+    <script>
+    // =============================================================================
+    // GLOBAL CAPTURE INTERCEPTOR
+    // =============================================================================
+    window.addEventListener('keydown', function(e) {
+        // หากผู้ใช้กำลังพิมพ์ข้อความในช่อง input ให้ปล่อยปุ่มทำงานตามปกติ
+        if (document.activeElement && document.activeElement.tagName.toLowerCase() === 'input') {
+            return;
+        }
+        
+        // บล็อก default browser behavior ของ Space Bar ทุกกรณีในเกม
+        if (e.code === 'Space' || e.key === ' ') {
+            e.preventDefault();
+        }
+        // บล็อก Arrow keys ไม่ให้เบราว์เซอร์ scroll ด้วย
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.code)) {
+            e.preventDefault();
+        }
+        // ถ้า ATO เปิดอยู่ ให้หยุด Space Bar ก่อนถึง listener อื่นทั้งหมด
+        if (window.TrainState && window.TrainState.isATOEnabled) {
+            if (e.code === 'Space' || e.key === ' ') {
+                e.stopImmediatePropagation();
+            }
+        }
+    }, true);
+
+    // บังคับให้เกมรับ keyboard focus ตลอดเวลา ป้องกันเบราว์เซอร์ดึง Space Bar ไปใช้งาน
+    document.addEventListener('DOMContentLoaded', function() {
+        document.body.focus();
+        // ถ้าคลิกนอกเกม ให้ดึง focus กลับมาที่ body ทันที
+        document.addEventListener('click', function() {
+            setTimeout(function() { document.body.focus(); }, 50);
+        });
+        // ถ้า focus หลุดไปที่ปุ่มใด ป้องกันปุ่มรับ Space Bar ไปใช้เป็น click
+        document.addEventListener('focusin', function(e) {
+            const tag = e.target.tagName.toLowerCase();
+            if (tag === 'button' || tag === 'a') {
+                // ป้องกัน Space ที่ปุ่มเกิด click event (browser default)
+                e.target.addEventListener('keydown', function(ev) {
+                    if (ev.code === 'Space') { ev.preventDefault(); }
+                }, { once: false });
+            }
+        });
+    });
+    </script>
+
+</body>
+
+</html>
