@@ -400,6 +400,74 @@ app.post('/api/tts', async (req, res) => {
     }
 });
 
+// ====== NEWSLETTER SYSTEM ======
+const subscribersFile = 'subscribers.json';
+
+app.post('/api/subscribe', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email || !email.includes('@')) {
+            return res.status(400).json({ success: false, message: 'Invalid email address' });
+        }
+
+        let subscribers = [];
+        if (fs.existsSync(subscribersFile)) {
+            subscribers = JSON.parse(fs.readFileSync(subscribersFile, 'utf8'));
+        }
+
+        if (subscribers.includes(email)) {
+            return res.status(200).json({ success: true, message: 'Email already subscribed' });
+        }
+
+        subscribers.push(email);
+        fs.writeFileSync(subscribersFile, JSON.stringify(subscribers, null, 2));
+        
+        console.log(`[Newsletter] New subscriber: ${email}`);
+
+        // ส่งอีเมลยืนยันความปลอดภัยสูงสุดตามที่ผู้พัฒนาร้องขอ
+        const { GMAIL_USER, GMAIL_PASS } = process.env;
+        if (GMAIL_USER && GMAIL_PASS) {
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: { user: GMAIL_USER, pass: GMAIL_PASS }
+            });
+            
+            const mailOptions = {
+                from: `"Thai Train Simulator" <${GMAIL_USER}>`,
+                to: email,
+                subject: "ยืนยันการสมัครรับข่าวสารจาก Thai Train Simulator",
+                html: `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+                        <div style="background-color: #ffcc00; color: #000; padding: 20px; text-align: center;">
+                            <h2 style="margin: 0;">ยินดีต้อนรับสู่ครอบครัว Thai Train Simulator</h2>
+                        </div>
+                        <div style="padding: 20px; color: #333; line-height: 1.6;">
+                            <p>สวัสดีครับคุณพนักงานขับรถ,</p>
+                            <p>ระบบได้ทำการบันทึกอีเมลของคุณ <strong>${email}</strong> สำหรับการรับข่าวสารและอัปเดตใหม่ๆ จากเกม Thai Train Simulator เรียบร้อยแล้วครับ</p>
+                            
+                            <div style="background-color: #f9f9f9; border-left: 4px solid #4CAF50; padding: 15px; margin: 20px 0;">
+                                <h3 style="margin-top: 0; color: #4CAF50;">🔒 ประกาศนโยบายความปลอดภัยสูงสุด (Maximum Security)</h3>
+                                <p style="margin-bottom: 0;">ทางทีมผู้พัฒนาขอให้คำมั่นสัญญาว่า ข้อมูลอีเมลของคุณจะถูกเก็บรักษาไว้ด้วยมาตรฐานความปลอดภัยระดับสูงสุด เราจะไม่มีการนำข้อมูลส่วนตัวของคุณไปเปิดเผย จำหน่าย หรือส่งต่อให้กับบุคคลที่สามโดยเด็ดขาด อีเมลนี้จะถูกใช้เพื่อการแจ้งเตือนข่าวสารที่สำคัญเกี่ยวกับตัวเกมเท่านั้น</p>
+                            </div>
+                            
+                            <p>เตรียมพบกับฟีเจอร์ใหม่ๆ และการอัปเดตสุดพิเศษที่จะส่งตรงถึงคุณก่อนใครได้เลยครับ!</p>
+                            <p>ขอแสดงความนับถือ,<br><strong>ทีมผู้พัฒนา Thai Train Simulator</strong></p>
+                        </div>
+                    </div>
+                `
+            };
+            
+            // ไม่ต้องรอให้ส่งเสร็จ (Non-blocking) เพื่อให้ Client ได้รับ Response ไวๆ
+            transporter.sendMail(mailOptions).catch(err => console.error("[Newsletter] Failed to send welcome email:", err));
+        }
+
+        res.status(200).json({ success: true, message: 'Subscribed successfully' });
+    } catch (err) {
+        console.error('[Newsletter] Error:', err);
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+});
+
 // ====== SOCKET.IO MULTIPLAYER & ANALYTICS SYSTEM ======
 const activePlayers = {};
 const analyticsFile = 'analytics.json';
