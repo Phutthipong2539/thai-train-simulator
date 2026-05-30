@@ -173,51 +173,44 @@ window.LoginSystem = {
         const btnConfirm = document.createElement('button');
         btnConfirm.style.cssText = btnStyle;
         btnConfirm.innerText = "> ตกลง (บันทึกชื่อ) <";
-        btnConfirm.onclick = async () => {
-            if (window.speak) window.speak("กำลังบันทึกข้อมูลและออกรหัสพนักงานกับเซิร์ฟเวอร์ออนไลน์...");
+        btnConfirm.onclick = () => {
+            if (window.speak) window.speak(`ยินดีต้อนรับคุณ ${this.tempName} ระบบกำลังออกรหัสพนักงานอยู่เบื้องหลัง ขอให้เดินทางปลอดภัยครับ`);
             
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            this.savedName = this.tempName;
+            this.savedPin = "กำลังออกรหัส..."; // Temporary ID
+            localStorage.setItem('thaitrain_driver_name_v2', this.savedName);
             
-            try {
-                const res = await fetch("http://119.59.103.185:45000/api/drivers/register", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name: this.tempName }),
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-                const result = await res.json();
-                
+            // Background fetch to get real PIN
+            fetch("http://119.59.103.185:45000/api/drivers/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: this.savedName })
+            })
+            .then(res => res.json())
+            .then(result => {
                 if (result.success) {
-                    this.savedName = result.name;
-                    this.savedPin = result.id;
-                    localStorage.setItem('thaitrain_driver_name_v2', this.savedName);
+                    this.savedPin = result.id || result.driver.id;
                     localStorage.setItem('thaitrain_driver_pin_v2', this.savedPin);
                     
-                    this.syncWithManagement();
-                    this.close();
+                    if (window.ManagementSystem) {
+                        window.ManagementSystem.driverPin = this.savedPin;
+                        window.ManagementSystem.save();
+                    }
                     
-                    if (window.speak) window.speak(`ลงทะเบียนและเช็คอินสำเร็จ ยินดีต้อนรับคุณ ${this.savedName} รหัสพนักงานของคุณคือ ${this.savedPin} ขอให้เดินทางปลอดภัยและขับรถด้วยความสุภาพครับ`);
-                } else {
-                    if (window.speak) window.speak(`เกิดข้อผิดพลาดจากเซิร์ฟเวอร์: ${result.message || 'ไม่ทราบสาเหตุ'}`);
-                    this.renderInputStep();
+                    if (window.speak) {
+                        setTimeout(() => {
+                            window.speak(`ออกรหัสพนักงานสำเร็จ รหัสของคุณคือ ${this.savedPin}`);
+                        }, 3000); // Small delay
+                    }
                 }
-            } catch (err) {
-                clearTimeout(timeoutId);
-                console.warn("Online registration failed or timed out:", err);
-                
-                // --- OFFLINE FALLBACK ---
-                if (window.speak) window.speak("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ ระบบจะออกรหัสชั่วคราวให้ก่อนครับ และจะเชื่อมต่อใหม่อัตโนมัติในภายหลัง");
-                
-                this.savedName = this.tempName;
-                this.savedPin = "999"; // Temporary ID
-                window.needsOnlineRegistration = true; // Flag for auto-reconnect
-                
-                // ไม่เซฟลง localStorage เพื่อให้ต้องขอรหัสจริงในอนาคต
-                this.syncWithManagement();
-                this.close();
-            }
+            })
+            .catch(err => {
+                console.warn("Background registration failed:", err);
+                window.needsOnlineRegistration = true; // Retry logic in multiplayerSystem handles this
+            });
+            
+            this.syncWithManagement();
+            this.close();
         };
         list.appendChild(btnConfirm);
         
