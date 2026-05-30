@@ -697,9 +697,11 @@ window.ManagementSystem = {
                     list.innerHTML = `<h3>พนักงานที่กำลังออนไลน์ (${data.drivers.length} ท่าน)</h3>`;
                     
                     if (data.drivers.length === 0) {
-                        const noData = document.createElement('p');
-                        noData.innerText = "ไม่มีพนักงานออนไลน์ในขณะนี้";
+                        const noData = document.createElement('button');
+                        noData.className = 'job-card';
+                        noData.innerText = "แจ้งเตือน: ไม่มีพนักงานออนไลน์ในขณะนี้";
                         noData.style.color = '#ff9999';
+                        noData.style.cursor = 'default';
                         list.appendChild(noData);
                     } else {
                         data.drivers.forEach(d => {
@@ -751,9 +753,11 @@ window.ManagementSystem = {
                     list.innerHTML = `<h3>รายชื่อประวัติพนักงานทั้งหมด</h3>`;
                     
                     if (data.drivers.length === 0) {
-                        const noData = document.createElement('p');
-                        noData.innerText = "ไม่มีประวัติพนักงานในระบบ";
+                        const noData = document.createElement('button');
+                        noData.className = 'job-card';
+                        noData.innerText = "แจ้งเตือน: ไม่มีประวัติพนักงานในระบบ";
                         noData.style.color = '#ff9999';
+                        noData.style.cursor = 'default';
                         list.appendChild(noData);
                     } else {
                         data.drivers.forEach(d => {
