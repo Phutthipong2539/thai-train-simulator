@@ -151,21 +151,34 @@ window.LoginSystem = {
         const btnConfirm = document.createElement('button');
         btnConfirm.style.cssText = btnStyle;
         btnConfirm.innerText = "> ตกลง (บันทึกชื่อ) <";
-        btnConfirm.onclick = () => {
-            this.savedName = this.tempName;
-            localStorage.setItem('thaitrain_driver_name_global', this.savedName);
-            
-            if (!this.savedPin) {
-                let counter = parseInt(localStorage.getItem('thaitrain_global_employee_counter') || "1", 10);
-                this.savedPin = counter.toString().padStart(3, '0');
-                localStorage.setItem('thaitrain_global_employee_counter', (counter + 1).toString());
-                localStorage.setItem('thaitrain_driver_pin_global', this.savedPin);
+        btnConfirm.onclick = async () => {
+            if (window.speak) window.speak("กำลังบันทึกข้อมูลและออกรหัสพนักงานกับเซิร์ฟเวอร์ออนไลน์...");
+            try {
+                const res = await fetch("http://119.59.103.185:45000/api/drivers/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name: this.tempName })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    this.savedName = result.name;
+                    this.savedPin = result.id;
+                    localStorage.setItem('thaitrain_driver_name_global', this.savedName);
+                    localStorage.setItem('thaitrain_driver_pin_global', this.savedPin);
+                    
+                    this.syncWithManagement();
+                    this.close();
+                    
+                    if (window.speak) window.speak(`ลงทะเบียนและเช็คอินสำเร็จ ยินดีต้อนรับคุณ ${this.savedName} รหัสพนักงานของคุณคือ ${this.savedPin} ขอให้เดินทางปลอดภัยและขับรถด้วยความสุภาพครับ`);
+                } else {
+                    if (window.speak) window.speak(`เกิดข้อผิดพลาดจากเซิร์ฟเวอร์: ${result.message || 'ไม่ทราบสาเหตุ'}`);
+                    this.renderInputStep();
+                }
+            } catch (err) {
+                console.error("Online registration failed:", err);
+                if (window.speak) window.speak("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อลงทะเบียนได้ กรุณาเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่อีกครั้งครับ");
+                this.renderConfirmStep();
             }
-            
-            this.syncWithManagement();
-            this.close();
-            
-            if (window.speak) window.speak(`ขอให้คุณ ${this.savedName} รหัสพนักงาน ${this.savedPin} ขับรถด้วยความสุภาพนิ่มนวลและเดินทางปลอดภัยครับ`);
         };
         list.appendChild(btnConfirm);
         

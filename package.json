@@ -1,21 +1,33 @@
 {
-  "name": "server",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "thai-train-simulator",
+  "version": "1.0.8-z",
+  "description": "เกมจำลองการขับรถไฟเสมือนจริงของไทย",
+  "author": "Kittiphong <Phutthipong.Ongrak@gmail.com>",
+  "main": "main.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "electron .",
+    "build": "electron-builder"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "build": {
+    "appId": "com.thai.train.simulator",
+    "asar": true,
+    "win": {
+      "target": ["nsis", "zip"],
+      "icon": "icon.ico"
+    },
+    "files": [
+      "**/*",
+      "!dist",
+      "!*.zip",
+      "!package-lock.json"
+    ]
+  },
   "dependencies": {
-    "express": "^5.2.1",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "@google/generative-ai": "^0.21.0",
-    "ws": "^8.18.0",
-    "socket.io": "^4.7.4"
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.8.3"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
   }
 }

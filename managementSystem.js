@@ -1,6 +1,10 @@
 /**
  * managementSystem.js - ระบบบริหารจัดการบริษัทรถไฟเชิงพาณิชย์ (V14.0 - Transactions & Detailed Repairs)
  */
+(function() {
+const fs = typeof require !== 'undefined' ? require('fs') : null;
+const path = typeof require !== 'undefined' ? require('path') : null;
+const os = typeof require !== 'undefined' ? require('os') : null;
 
 window.ManagementSystem = {
     wallet: 200000,
@@ -29,6 +33,7 @@ window.ManagementSystem = {
 
     // Driver System State
     driverName: "",
+    driverId: "",
     driverPin: "",
     isCheckedIn: false,
     checkInTime: null,
@@ -64,7 +69,23 @@ window.ManagementSystem = {
         passengerSeats: 0
     },
     init: function() {
-        const data = localStorage.getItem('thaitrain_management_v3');
+        let data = null;
+        if (fs && path && os) {
+            try {
+                const saveDir = path.join(os.homedir(), 'Documents', 'ThaiTrainSimulator');
+                const filePath = path.join(saveDir, 'management_v3.json');
+                if (fs.existsSync(filePath)) {
+                    data = fs.readFileSync(filePath, 'utf8');
+                }
+            } catch (e) {
+                console.error("Failed to read physical save", e);
+            }
+        }
+        
+        if (!data) {
+            data = localStorage.getItem('thaitrain_management_v3');
+        }
+
         if (data) {
             try {
                 const parsed = JSON.parse(data);
@@ -86,8 +107,9 @@ window.ManagementSystem = {
                 };
                 this.partConditions = parsed.partConditions || [100, 100, 100, 100];
                 this.driverName = parsed.driverName || "";
+                this.driverId = parsed.driverId || "";
                 this.driverPin = parsed.driverPin || "";
-                this.isCheckedIn = parsed.isCheckedIn || false;
+                this.isCheckedIn = this.driverName ? true : false;
                 this.checkInTime = parsed.checkInTime || null;
                 this.shiftIncome = parsed.shiftIncome || 0;
                 this.inventory = parsed.inventory || {};
@@ -127,6 +149,7 @@ window.ManagementSystem = {
             unlockedTrainTypes: this.unlockedTrainTypes,
             partConditions: this.partConditions,
             driverName: this.driverName,
+            driverId: this.driverId,
             driverPin: this.driverPin,
             isCheckedIn: this.isCheckedIn,
             checkInTime: this.checkInTime,
@@ -138,7 +161,21 @@ window.ManagementSystem = {
             nameChangeCount: this.nameChangeCount,
             lastNameChangeMonth: this.lastNameChangeMonth
         };
-        localStorage.setItem('thaitrain_management_v3', JSON.stringify(state));
+        const stateStr = JSON.stringify(state);
+        localStorage.setItem('thaitrain_management_v3', stateStr);
+        
+        if (fs && path && os) {
+            try {
+                const saveDir = path.join(os.homedir(), 'Documents', 'ThaiTrainSimulator');
+                if (!fs.existsSync(saveDir)) {
+                    fs.mkdirSync(saveDir, { recursive: true });
+                }
+                const filePath = path.join(saveDir, 'management_v3.json');
+                fs.writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf8');
+            } catch (e) {
+                console.error("Failed to save to Documents folder:", e);
+            }
+        }
     },
 
     getOverallCondition: function() {
@@ -286,6 +323,15 @@ window.ManagementSystem = {
             </div>
         `;
 
+        // 0. Driver Menu (ระบบพนักงานขับรถและเช็คอิน)
+        const btnDriver = document.createElement('button');
+        btnDriver.className = 'job-card';
+        btnDriver.innerText = "0. ระบบข้อมูลและเช็คอินพนักงานขับรถ";
+        btnDriver.style.borderColor = "#00ffcc";
+        btnDriver.style.backgroundColor = "rgba(0, 255, 204, 0.1)";
+        btnDriver.onclick = () => this.renderDriverMenu();
+        list.appendChild(btnDriver);
+
         // 1. Financials (ศูนย์บัญชีบริษัท)
         const btnFin = document.createElement('button');
         btnFin.className = 'job-card';
@@ -345,6 +391,24 @@ window.ManagementSystem = {
         btnNewsletter.onclick = () => this.renderNewsletterPrompt();
         list.appendChild(btnNewsletter);
 
+        // 8. Report Issue (แจ้งปัญหา)
+        const btnReport = document.createElement('button');
+        btnReport.className = 'job-card';
+        btnReport.innerText = "8. ศูนย์รับเรื่องร้องเรียน (แจ้งปัญหา / ส่ง Feedback)";
+        btnReport.style.borderColor = "#ff9800";
+        btnReport.style.backgroundColor = "rgba(255, 152, 0, 0.1)";
+        btnReport.onclick = () => this.renderReportPrompt();
+        list.appendChild(btnReport);
+
+        // 9. How to play
+        const btnHowToPlay = document.createElement('button');
+        btnHowToPlay.className = 'job-card';
+        btnHowToPlay.innerText = "9. คู่มือการเล่น (How to Play)";
+        btnHowToPlay.style.borderColor = "#00bcd4";
+        btnHowToPlay.style.backgroundColor = "rgba(0, 188, 212, 0.1)";
+        btnHowToPlay.onclick = () => this.renderHowToPlayRoot();
+        list.appendChild(btnHowToPlay);
+
         // Exit Button
         const btnClose = document.createElement('button');
         btnClose.className = 'btn-close';
@@ -389,7 +453,15 @@ window.ManagementSystem = {
         });
         list.appendChild(input);
 
-        this.activeButtons = [input];
+        // Add visible Cancel button
+        const btnCancel = document.createElement('button');
+        btnCancel.className = 'btn-close';
+        btnCancel.style.backgroundColor = "#555";
+        btnCancel.innerText = "ยกเลิก (Escape)";
+        btnCancel.onclick = () => onCancel();
+        list.appendChild(btnCancel);
+
+        this.activeButtons = [input, btnCancel];
         this.focusedButtonIndex = 0;
         this.focusButton(0);
         setTimeout(() => input.focus(), 50);
@@ -411,7 +483,7 @@ window.ManagementSystem = {
                 if (window.speak) window.speak("กำลังส่งข้อมูลไปยังเซิร์ฟเวอร์ กรุณารอสักครู่ครับ");
                 
                 try {
-                    const response = await fetch("https://thai-train-ai-server.onrender.com/api/subscribe", {
+                    const response = await fetch("http://119.59.103.185:45000/api/subscribe", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ email: email })
@@ -433,8 +505,155 @@ window.ManagementSystem = {
                     setTimeout(() => this.renderRootMenu(), 2500);
                 }
             },
+            () => this.close()
+        );
+    },
+
+    renderReportPrompt: function() {
+        if (window.speak) window.speak("ศูนย์รับเรื่องร้องเรียน กรุณาพิมพ์รายละเอียดปัญหาที่คุณพบ");
+        this.renderInputPrompt(
+            "แจ้งปัญหา / Feedback",
+            "พิมพ์รายละเอียดปัญหา...",
+            false,
+            async (issueText) => {
+                if (issueText.trim().length < 5) {
+                    if (window.speak) window.speak("ข้อความสั้นเกินไป กรุณาอธิบายปัญหาให้ชัดเจนขึ้นครับ");
+                    setTimeout(() => this.renderReportPrompt(), 1500);
+                    return;
+                }
+                
+                if (window.speak) window.speak("กำลังส่งข้อความไปยังเซิร์ฟเวอร์ กรุณารอสักครู่...");
+                
+                try {
+                    const playerName = this.driverName || "ไม่ระบุชื่อ";
+                    const response = await fetch("http://119.59.103.185:45000/api/report-issue", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ playerName, issueText })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        if (window.speak) window.speak("ส่งข้อมูลไปยังอีเมลผู้พัฒนาเรียบร้อยแล้ว ขอบคุณสำหรับความคิดเห็นครับ!");
+                        setTimeout(() => this.renderRootMenu(), 3000);
+                    } else {
+                        if (window.speak) window.speak("เกิดข้อผิดพลาดในการส่งข้อมูล: " + (result.message || "ไม่ทราบสาเหตุ"));
+                        setTimeout(() => this.renderRootMenu(), 3000);
+                    }
+                } catch (err) {
+                    if (window.speak) window.speak("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ในขณะนี้ กรุณาลองใหม่ภายหลัง");
+                    setTimeout(() => this.renderRootMenu(), 3000);
+                }
+            },
             () => this.renderRootMenu()
         );
+    },
+
+    renderHowToPlayRoot: function() {
+        const list = document.getElementById('management-list');
+        if (!list) return;
+        this.currentMenu = "how_to_play";
+        
+        if (window.speak) window.speak("คู่มือการเล่นเกม มีหลายหัวข้อให้เลือกอ่านครับ");
+        
+        list.innerHTML = `<h3>📖 คู่มือการเล่น (How to Play)</h3>
+        <p style="color:var(--text-primary); font-size:14px; margin-bottom:15px;">เลือกหัวข้อที่คุณต้องการศึกษาเพื่อดูรายละเอียดการเล่นในแต่ละส่วน</p>`;
+
+        const topics = [
+            { id: 'controls', name: "1. การควบคุมพื้นฐานและการขับขี่" },
+            { id: 'radio', name: "2. ระบบวิทยุสื่อสารและ AI ควบคุม" },
+            { id: 'management', name: "3. ระบบบริษัท การเงิน และการซื้อของ" },
+            { id: 'passengers', name: "4. การรับส่งผู้โดยสารและเปลี่ยนป้าย" },
+            { id: 'emergency', name: "5. เหตุฉุกเฉินและการซ่อมบำรุง" }
+        ];
+
+        topics.forEach(topic => {
+            const btn = document.createElement('button');
+            btn.className = 'job-card';
+            btn.innerText = topic.name;
+            btn.style.borderColor = "#00bcd4";
+            btn.onclick = () => this.renderHowToTopic(topic.id, topic.name);
+            list.appendChild(btn);
+        });
+
+        const btnBack = document.createElement('button');
+        btnBack.className = 'btn-close';
+        btnBack.innerText = "ย้อนกลับ (Escape)";
+        btnBack.onclick = () => this.renderRootMenu();
+        list.appendChild(btnBack);
+        
+        this.setupKeyboard(list);
+    },
+
+    renderHowToTopic: function(topicId, topicName) {
+        const list = document.getElementById('management-list');
+        if (!list) return;
+        this.currentMenu = "how_to_topic";
+        
+        if (window.speak) window.speak("กำลังอ่านหัวข้อ " + topicName.replace(/[0-9.]/g, ''));
+        
+        let content = "";
+        switch(topicId) {
+            case 'controls':
+                content = `<ul>
+                    <li><b>W / S:</b> เร่งเครื่อง / ลดคันเร่ง</li>
+                    <li><b>A / D:</b> เพิ่มเบรก / ลดเบรก</li>
+                    <li><b>Spacebar:</b> ลงเบรกฉุกเฉิน (Emergency Brake) ทันที</li>
+                    <li><b>E:</b> สตาร์ท / ดับเครื่องยนต์</li>
+                    <li><b>H:</b> บีบแตรเตือนภัย</li>
+                    <li><b>X:</b> โหมดขับอัตโนมัติ (ATO - ใช้ได้กับขบวนที่รองรับ)</li>
+                    <li><b>Q:</b> กดปุ่ม Deadman สลับไปมาเพื่อป้องกันรถเบรกฉุกเฉิน</li>
+                </ul>`;
+                break;
+            case 'radio':
+                content = `<ul>
+                    <li><b>[ และ ]:</b> เปลี่ยนช่องวิทยุ (1 - 20)</li>
+                    <li><b>V (ค้างไว้):</b> กดไมค์พูดคุยกับผู้เล่นอื่นในช่องเดียวกัน (Voice Chat)</li>
+                    <li><b>ช่อง 1 (ศูนย์ควบคุม):</b> AI จะคอยแจ้งเตือนระยะทางก่อนถึงสถานีและทางหลีกแบบเจาะจงรายขบวน</li>
+                    <li>ระบบวิทยุสามารถรับฟังเสียงประกาศเหตุฉุกเฉิน (ว.9) แบบสมจริงได้</li>
+                </ul>`;
+                break;
+            case 'management':
+                content = `<ul>
+                    <li><b>เมนู M:</b> เปิดหน้าต่างการจัดการบริษัท</li>
+                    <li>คุณต้องตั้งชื่อพนักงานและ <b>"เช็คอิน"</b> ก่อนเริ่มขับเพื่อให้ได้เงิน</li>
+                    <li>เมื่อเช็คเอาท์เงินจะเข้าสู่บัญชีบริษัทตามระยะทางที่วิ่ง</li>
+                    <li>บริษัทมีค่าเสื่อมสภาพของขบวนรถ คุณต้องกดเข้ามาในเมนู <b>ห้องเก็บอุปกรณ์</b> เพื่อซื้ออะไหล่ซ่อมบำรุง</li>
+                    <li>หากเงินหมด สามารถกู้เงินฉุกเฉินได้ที่ <b>สถาบันการเงิน KK Money</b></li>
+                </ul>`;
+                break;
+            case 'passengers':
+                content = `<ul>
+                    <li><b>P:</b> เปลี่ยนป้ายสถานีปลายทางข้างตู้โดยสารและหัวรถจักร</li>
+                    <li><b>K:</b> เปิด-ปิดประตูรถไฟสำหรับรับส่งผู้โดยสาร</li>
+                    <li>เมื่อเข้าจอดที่สถานี ให้อยู่ในความเร็วต่ำกว่า 5 กม./ชม. ระบบจะบังคับจอดอัตโนมัติให้ตรงป้าย</li>
+                    <li>หากวิ่งเลยป้ายสถานี ผู้โดยสารจะไม่สามารถขึ้นรถได้ และไม่ได้ค่าโดยสาร</li>
+                </ul>`;
+                break;
+            case 'emergency':
+                content = `<ul>
+                    <li>หากเกิดอุบัติเหตุชนรถยนต์หรือสัตว์ รถไฟจะเบรกฉุกเฉินโดยอัตโนมัติ</li>
+                    <li>หากความเร็วเกินกำหนด ระบบจะร้องเตือน หากไม่ลดความเร็วระบบจะหยุดรถทันที</li>
+                    <li>การใช้เบรกฉุกเฉินบ่อยครั้งจะทำให้ <b>ล้อสึกหรอ</b> ไวขึ้น (ต้องเปลี่ยนอะไหล่ในเมนู)</li>
+                    <li>ฝนตกหรือทางลื่นจะทำให้ระยะเบรกเพิ่มขึ้น กรุณาเผื่อระยะในการหยุดรถ</li>
+                </ul>`;
+                break;
+        }
+
+        list.innerHTML = `
+            <h3 style="color:#00bcd4;">${topicName}</h3>
+            <div style="background:rgba(0, 188, 212, 0.05); padding:15px; border-radius:12px; margin-bottom:20px; line-height:1.6; font-size:15px; border:1px solid rgba(0, 188, 212, 0.2); color:var(--text-primary);">
+                ${content}
+            </div>
+        `;
+
+        const btnBack = document.createElement('button');
+        btnBack.className = 'btn-close';
+        btnBack.innerText = "ย้อนกลับ (Escape)";
+        btnBack.onclick = () => this.renderHowToPlayRoot();
+        list.appendChild(btnBack);
+        
+        this.setupKeyboard(list);
     },
 
     renderDriverMenu: function() {
@@ -443,148 +662,199 @@ window.ManagementSystem = {
         this.currentMenu = "driver";
         
         if (window.speak) {
-            if (!this.driverName) window.speak("ระบบพนักงานขับรถ กรุณาลงทะเบียนพนักงานใหม่");
-            else if (!this.isCheckedIn) window.speak(`สวัสดีครับคุณ ${this.driverName} กรุณาเช็คอินเข้างานก่อนเริ่มขับรถครับ`);
-            else window.speak(`คุณ ${this.driverName} กำลังอยู่ในกะการทำงาน กดเช็คเอาท์เพื่อจบงานและสรุปรายได้ครับ`);
+            if (!this.driverName) window.speak("ระบบพนักงานขับรถ กรุณาลงทะเบียนพนักงานใหม่ หรือเข้าสู่ระบบด้วยรหัสพนักงานเดิมครับ");
+            else window.speak(`ยินดีต้อนรับคุณ ${this.driverName} รหัสพนักงาน ${this.driverPin} ระบบขับรถไฟพร้อมให้บริการครับ`);
         }
 
         list.innerHTML = `<h3>ระบบพนักงานขับรถ</h3>`;
+        if (this.driverName && this.driverPin) {
+            list.innerHTML += `<p style="color: #ffcc00; font-size: 20px; margin: 10px 0;">🧑‍✈️ พนักงานขับรถ: คุณ ${this.driverName} (รหัสพนักงาน: ${this.driverPin})</p>`;
+        }
+
+        // ปุ่มเช็ครายชื่อพนักงานทั้งหมดจาก Server
+        const btnCheckDrivers = document.createElement('button');
+        btnCheckDrivers.className = 'job-card';
+        btnCheckDrivers.innerText = "0. เช็คข้อมูลพนักงานขับรถ (Online)";
+        btnCheckDrivers.onclick = async () => {
+            if (window.speak) window.speak("กำลังดึงข้อมูลพนักงานจากเซิร์ฟเวอร์ กรุณารอสักครู่");
+            try {
+                const res = await fetch("http://119.59.103.185:45000/api/drivers");
+                const data = await res.json();
+                if (data.success) {
+                    if (data.drivers.length === 0) {
+                        if (window.speak) window.speak("ยังไม่มีพนักงานในระบบครับ");
+                        this.renderDriverMenu();
+                        return;
+                    }
+                    if (window.speak) window.speak(`พบข้อมูลพนักงานทั้งหมด ${data.drivers.length} ท่าน`);
+                    alert(`รายชื่อพนักงานขับรถทั้งหมด:\n\n${data.drivers.map(d => `[${d.id}] ${d.name}`).join('\n')}`);
+                    this.renderDriverMenu();
+                } else {
+                    if (window.speak) window.speak("ไม่สามารถดึงข้อมูลได้ครับ");
+                    this.renderDriverMenu();
+                }
+            } catch(e) {
+                if (window.speak) window.speak("เชื่อมต่อเซิร์ฟเวอร์ล้มเหลวครับ");
+                this.renderDriverMenu();
+            }
+        };
+        list.appendChild(btnCheckDrivers);
 
         if (!this.driverName || !this.driverPin) {
             const btnRegister = document.createElement('button');
             btnRegister.className = 'job-card';
-            btnRegister.innerText = "1. ลงทะเบียนพนักงานใหม่ (ตั้งชื่อและรหัส 4 หลัก)";
+            btnRegister.innerText = "1. ลงทะเบียนพนักงานใหม่ (Online)";
             btnRegister.onclick = () => {
-                this.renderInputPrompt("ลงทะเบียนพนักงานใหม่", "กรุณาพิมพ์ชื่อพนักงานขับรถของคุณ", false, (name) => {
-                    this.tempName = name;
-                    this.renderInputPrompt("ตั้งรหัสพนักงาน", "กรุณาตั้งรหัสพนักงาน 4 หลัก (ตัวเลขเท่านั้น)", true, (pin) => {
-                        if (pin.length >= 4) {
-                            this.driverName = this.tempName;
-                            this.driverPin = pin.substring(0, 4);
-                            this.save();
-                            if (window.speak) window.speak(`ลงทะเบียนพนักงานสำเร็จ ยินดีต้อนรับคุณ ${this.driverName} รหัสพนักงานของคุณคือ ${this.driverPin.split('').join(' ')} ตอนนี้คุณสามารถรับงานและขับรถได้เลยครับ`);
-                            setTimeout(() => this.close(), 500);
-                        } else {
-                            if (window.speak) window.speak("รหัสพนักงานต้องมีอย่างน้อย 4 หลักครับ กรุณาทำรายการลงทะเบียนใหม่");
-                            this.renderDriverMenu();
-                        }
-                    }, () => this.renderDriverMenu());
-                }, () => this.renderDriverMenu());
-            };
-            list.appendChild(btnRegister);
-        } else {
-            if (!this.isCheckedIn) {
-                const btnCheckIn = document.createElement('button');
-                btnCheckIn.className = 'job-card';
-                btnCheckIn.style.borderColor = 'var(--success)';
-                btnCheckIn.innerText = "1. เช็คอินเข้างาน (เริ่มกะใหม่)";
-                btnCheckIn.onclick = () => {
-                    this.renderInputPrompt("เช็คอินเข้างาน", "กรุณาพิมพ์รหัสพนักงานเพื่อเช็คอิน", true, (enteredPin) => {
-                        if (enteredPin === this.driverPin) {
+                this.renderInputPrompt("ลงทะเบียนพนักงานขับรถ", "พิมพ์ชื่อที่ต้องการให้แสดง...", false, async (name) => {
+                    this.tempName = name.trim();
+                    if(this.tempName.length === 0) return this.renderDriverMenu();
+                    
+                    if (window.speak) window.speak("กำลังลงทะเบียนและรับรหัสพนักงานใหม่...");
+                    try {
+                        const res = await fetch("http://119.59.103.185:45000/api/drivers/register", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name: this.tempName })
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            this.driverName = result.name;
+                            this.driverId = result.id;
+                            this.driverPin = result.id;
                             this.isCheckedIn = true;
                             this.checkInTime = Date.now();
                             this.shiftIncome = 0;
                             this.save();
-                            if (window.speak) window.speak(`ยินดีต้อนรับคุณ ${this.driverName} เช็คอินเข้างานสำเร็จ ขอให้ปฏิบัติหน้าที่ด้วยความปลอดภัยครับ`);
-                            setTimeout(() => this.close(), 500);
-                        } else {
-                            if (window.speak) window.speak("รหัสพนักงานไม่ถูกต้องครับ กรุณาลองใหม่อีกครั้ง");
-                            this.renderDriverMenu();
-                        }
-                    }, () => this.renderDriverMenu());
-                };
-                list.appendChild(btnCheckIn);
-
-                const btnChangeName = document.createElement('button');
-                btnChangeName.className = 'job-card';
-                btnChangeName.innerText = "3. ลบข้อมูลพนักงานและลงทะเบียนใหม่";
-                btnChangeName.onclick = () => {
-                    this.renderInputPrompt("ยืนยันตัวตน", "กรุณาพิมพ์รหัสพนักงานเดิม เพื่อยืนยันการลบข้อมูล", true, (enteredPin) => {
-                        if (enteredPin === this.driverPin) {
-                            this.driverName = "";
-                            this.driverPin = "";
-                            this.save();
-                            localStorage.removeItem('thaitrain_driver_name_global');
-                            localStorage.removeItem('thaitrain_driver_pin_global');
-                            if (window.speak) window.speak("ลบข้อมูลพนักงานเดิมแล้ว กรุณารีสตาร์ทเกมเพื่อลงทะเบียนใหม่ครับ");
-                            this.renderDriverMenu();
-                        } else {
-                            if (window.speak) window.speak("รหัสพนักงานไม่ถูกต้องครับ ไม่สามารถรีเซ็ตข้อมูลได้");
-                            this.renderDriverMenu();
-                        }
-                    }, () => this.renderDriverMenu());
-                };
-                list.appendChild(btnChangeName);
-
-            } else {
-                const btnCheckOut = document.createElement('button');
-                btnCheckOut.className = 'job-card';
-                btnCheckOut.style.borderColor = '#ff4444';
-                btnCheckOut.innerText = "1. เช็คเอาท์ออกงาน (จบกะและสรุปรายได้)";
-                btnCheckOut.onclick = () => {
-                    this.renderInputPrompt("เช็คเอาท์ออกงาน", "กรุณาพิมพ์รหัสพนักงานเพื่อเช็คเอาท์", true, (enteredPin) => {
-                        if (enteredPin === this.driverPin) {
-                            const now = Date.now();
-                            const diffMs = now - (this.checkInTime || now);
-                            const totalMinutes = Math.floor(diffMs / 60000);
-                            const hours = Math.floor(totalMinutes / 60);
-                            const minutes = totalMinutes % 60;
                             
-                            let timeStr = "";
-                            if (hours > 0) timeStr += `${hours} ชั่วโมง `;
-                            timeStr += `${minutes} นาที`;
+                            localStorage.setItem('thaiTrainPlayerName', this.driverName);
+                            localStorage.setItem('thaitrain_driver_name_global', this.driverName);
+                            localStorage.setItem('thaitrain_driver_pin_global', this.driverPin);
+                            if (window.MultiplayerSystem) {
+                                window.MultiplayerSystem.playerName = this.driverName;
+                            }
+                            
+                            if (window.speak) window.speak(`ลงทะเบียนสำเร็จ ยินดีต้อนรับคุณ ${this.driverName} รหัสพนักงานของคุณคือ ${this.driverPin} ขอให้เดินทางปลอดภัยครับ`);
+                            setTimeout(() => this.close(), 1200);
+                        } else {
+                            if (window.speak) window.speak("เกิดข้อผิดพลาด: " + result.message);
+                            this.renderDriverMenu();
+                        }
+                    } catch (err) {
+                        if (window.speak) window.speak("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+                        this.renderDriverMenu();
+                    }
+                }, () => this.renderDriverMenu());
+            };
+            list.appendChild(btnRegister);
 
-                            const incomeStr = this.shiftIncome.toLocaleString();
-
-                            this.isCheckedIn = false;
-                            this.checkInTime = null;
+            const btnLogin = document.createElement('button');
+            btnLogin.className = 'job-card';
+            btnLogin.innerText = "2. เข้าสู่ระบบด้วยรหัสพนักงานเดิม";
+            btnLogin.onclick = () => {
+                this.renderInputPrompt("เข้าสู่ระบบพนักงาน", "กรุณากรอกรหัสพนักงานของคุณ...", false, async (id) => {
+                    const enteredId = id.trim();
+                    if(enteredId.length === 0) return this.renderDriverMenu();
+                    
+                    if (window.speak) window.speak("กำลังตรวจสอบข้อมูลกับเซิร์ฟเวอร์...");
+                    try {
+                        const res = await fetch("http://119.59.103.185:45000/api/drivers/auth", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ id: enteredId })
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            this.driverName = result.name;
+                            this.driverId = enteredId;
+                            this.driverPin = enteredId;
+                            this.isCheckedIn = true;
+                            this.checkInTime = Date.now();
                             this.shiftIncome = 0;
                             this.save();
-
-                            const summaryMsg = `เช็คเอาท์สำเร็จ คุณ ${this.driverName} ทำงานไปทั้งหมด ${timeStr} รายได้รอบนี้ ${incomeStr} บาท ขอบคุณที่เหน็ดเหนื่อยครับ`;
-                            if (window.speak) window.speak(summaryMsg);
                             
-                            this.renderDriverMenu();
+                            localStorage.setItem('thaiTrainPlayerName', this.driverName);
+                            localStorage.setItem('thaitrain_driver_name_global', this.driverName);
+                            localStorage.setItem('thaitrain_driver_pin_global', this.driverPin);
+                            if (window.MultiplayerSystem) {
+                                window.MultiplayerSystem.playerName = this.driverName;
+                            }
+                            
+                            if (window.speak) window.speak(`ยินดีต้อนรับคุณ ${this.driverName} เข้าสู่ระบบสำเร็จ ขอให้เดินทางปลอดภัยครับ`);
+                            setTimeout(() => this.close(), 1000);
                         } else {
-                            if (window.speak) window.speak("รหัสพนักงานไม่ถูกต้องครับ ไม่สามารถเช็คเอาท์ได้");
+                            if (window.speak) window.speak("ไม่พบรหัสพนักงานนี้ในระบบออนไลน์ครับ");
                             this.renderDriverMenu();
                         }
-                    }, () => this.renderDriverMenu());
-                };
-                list.appendChild(btnCheckOut);
-                
-                // ระบบเปลี่ยนชื่อพนักงาน
-                const currentMonth = new Date().toISOString().substring(0, 7);
-                if (this.lastNameChangeMonth !== currentMonth) {
-                    this.nameChangeCount = 0;
-                    this.lastNameChangeMonth = currentMonth;
-                }
-                const changesLeft = 3 - this.nameChangeCount;
-                
-                const btnChangeName = document.createElement('button');
-                btnChangeName.className = 'job-card';
-                btnChangeName.innerText = `2. เปลี่ยนชื่อพนักงาน (สิทธิ์เหลือ ${changesLeft} ครั้งในเดือนนี้)`;
-                btnChangeName.onclick = () => {
-                    if (changesLeft <= 0) {
-                        if (window.speak) window.speak("คุณใช้สิทธิ์เปลี่ยนชื่อครบ 3 ครั้งในเดือนนี้แล้วครับ กรุณารอเดือนถัดไป");
-                        return;
+                    } catch (err) {
+                        console.error("Online auth failed:", err);
+                        const localName = localStorage.getItem('thaitrain_driver_name_global');
+                        const localPin = localStorage.getItem('thaitrain_driver_pin_global');
+                        if (localName && localPin && enteredId === localPin) {
+                            this.driverName = localName;
+                            this.driverId = enteredId;
+                            this.driverPin = localPin;
+                            this.isCheckedIn = true;
+                            this.checkInTime = Date.now();
+                            this.shiftIncome = 0;
+                            this.save();
+                            if (window.speak) window.speak("เซิร์ฟเวอร์ออฟไลน์ เข้าสู่ระบบแบบออฟไลน์สำเร็จครับ");
+                            setTimeout(() => this.close(), 1000);
+                        } else {
+                            if (window.speak) window.speak("เซิร์ฟเวอร์ออฟไลน์ และไม่มีข้อมูลแคชพนักงานในเครื่องนี้ครับ");
+                            this.renderDriverMenu();
+                        }
                     }
-                    this.renderInputPrompt("เปลี่ยนชื่อพนักงาน", "กรุณาพิมพ์ชื่อพนักงานใหม่ของคุณ", false, (newName) => {
-                        const oldName = this.driverName;
-                        this.driverName = newName;
-                        this.nameChangeCount++;
-                        this.lastNameChangeMonth = currentMonth;
-                        this.save();
-                        
-                        // ซิงค์กับระบบ Login
-                        localStorage.setItem('thaitrain_driver_name_global', this.driverName);
-                        
-                        if (window.speak) window.speak(`เปลี่ยนชื่อสำเร็จ จาก ${oldName} เป็น ${this.driverName} สิทธิ์คงเหลือ ${3 - this.nameChangeCount} ครั้งครับ`);
-                        this.renderDriverMenu();
-                    }, () => this.renderDriverMenu());
-                };
-                list.appendChild(btnChangeName);
+                }, () => this.renderDriverMenu());
+            };
+            list.appendChild(btnLogin);
+        } else {
+            // ระบบเปลี่ยนชื่อพนักงาน
+            const currentMonth = new Date().toISOString().substring(0, 7);
+            if (this.lastNameChangeMonth !== currentMonth) {
+                this.nameChangeCount = 0;
+                this.lastNameChangeMonth = currentMonth;
             }
+            const changesLeft = 3 - this.nameChangeCount;
+            
+            const btnChangeName = document.createElement('button');
+            btnChangeName.className = 'job-card';
+            btnChangeName.innerText = `1. เปลี่ยนชื่อพนักงาน (สิทธิ์เหลือ ${changesLeft} ครั้งในเดือนนี้)`;
+            btnChangeName.onclick = () => {
+                if (changesLeft <= 0) {
+                    if (window.speak) window.speak("คุณใช้สิทธิ์เปลี่ยนชื่อครบ 3 ครั้งในเดือนนี้แล้วครับ กรุณารอเดือนถัดไป");
+                    return;
+                }
+                this.renderInputPrompt("เปลี่ยนชื่อพนักงาน", "กรุณาพิมพ์ชื่อพนักงานใหม่ของคุณ", false, (newName) => {
+                    const oldName = this.driverName;
+                    this.driverName = newName;
+                    this.nameChangeCount++;
+                    this.lastNameChangeMonth = currentMonth;
+                    this.save();
+                    
+                    localStorage.setItem('thaitrain_driver_name_global', this.driverName);
+                    
+                    if (window.speak) window.speak(`เปลี่ยนชื่อสำเร็จ จาก ${oldName} เป็น ${this.driverName} สิทธิ์คงเหลือ ${3 - this.nameChangeCount} ครั้งครับ`);
+                    this.renderDriverMenu();
+                }, () => this.renderDriverMenu());
+            };
+            list.appendChild(btnChangeName);
+
+            const btnLogout = document.createElement('button');
+            btnLogout.className = 'job-card';
+            btnLogout.style.borderColor = '#ff4444';
+            btnLogout.innerText = "2. ลบข้อมูลพนักงานในเครื่อง (ออกจากระบบ)";
+            btnLogout.onclick = () => {
+                this.driverName = "";
+                this.driverId = "";
+                this.driverPin = "";
+                this.isCheckedIn = false;
+                this.save();
+                localStorage.removeItem('thaitrain_driver_name_global');
+                localStorage.removeItem('thaitrain_driver_pin_global');
+                if (window.speak) window.speak("ลบข้อมูลพนักงานในเครื่องและออกจากระบบแล้วครับ");
+                this.renderDriverMenu();
+            };
+            list.appendChild(btnLogout);
         }
 
         const btnBack = document.createElement('button');
@@ -1790,8 +2060,49 @@ window.ManagementSystem = {
 window.addEventListener('load', () => {
     window.ManagementSystem.init();
 });
+
+// === MANAGEMENT TOGGLE KEY LISTENER (M / ท) ===
+// แยกออกมาจาก setupKeyboardEvents เพื่อให้ capture phase ทำงานได้ก่อน manualControl.js
+window.addEventListener('keydown', (e) => {
+    if (document.activeElement) {
+        const tag = document.activeElement.tagName.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'iframe') return;
+    }
+    if (!e.key) return;
+    const key = e.key.toLowerCase();
+    
+    // ไม่บล็อก Alt+F4
+    if (e.altKey && e.key === 'F4') return;
+    
+    // M หรือ ท = toggle เมนูบริหารจัดการบริษัท
+    if (key === 'm' || key === 'ท') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (window.ManagementSystem) {
+            window.ManagementSystem.toggle();
+        }
+        return;
+    }
+    
+    // F หรือ ด = toggle เมนูเติมน้ำมัน
+    if (key === 'f' || key === 'ด') {
+        // อนุญาตเฉพาะถ้า ManagementSystem พร้อมและไม่มีเมนูอื่นเปิดอยู่
+        if (window.ManagementSystem && !(window.JobSystem && window.JobSystem.isOpen) && !(window.SettingsSystem && window.SettingsSystem.isOpen)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            window.ManagementSystem.toggleFuelMenu();
+        }
+        return;
+    }
+}, true); // capture phase ทำงานก่อน listener อื่นทุกตัว
 // Navigation ภายในเมนู Management เมื่อเปิดอยู่ (capture phase)
 window.addEventListener('keydown', (e) => {
+    if (document.activeElement) {
+        const tag = document.activeElement.tagName.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'iframe') {
+            return;
+        }
+    }
     if (!e.key) return;
     const key = e.key.toLowerCase();
     const mgmt = window.ManagementSystem;
@@ -1829,3 +2140,5 @@ window.addEventListener('keydown', (e) => {
         }
     }
 }, true);
+
+})();
