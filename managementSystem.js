@@ -535,7 +535,7 @@ window.ManagementSystem = {
                     
                     const result = await response.json();
                     if (result.success) {
-                        if (window.speak) window.speak("ส่งข้อมูลไปยังอีเมลผู้พัฒนาเรียบร้อยแล้ว ขอบคุณสำหรับความคิดเห็นครับ!");
+                        if (window.speak) window.speak("เสร็จสิ้นการรายงานแล้วขอบคุณครับ");
                         setTimeout(() => this.renderRootMenu(), 3000);
                     } else {
                         if (window.speak) window.speak("เกิดข้อผิดพลาดในการส่งข้อมูล: " + (result.message || "ไม่ทราบสาเหตุ"));
