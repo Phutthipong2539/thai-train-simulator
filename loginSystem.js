@@ -35,6 +35,23 @@ window.LoginSystem = {
             window.MultiplayerSystem.playerName = this.savedName;
             window.MultiplayerSystem.emitData(); // Update remote players immediately
         }
+        
+        // Auto-register to ensure server has this driver in drivers.json
+        fetch("http://119.59.103.185:45000/api/drivers/register", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: this.savedName })
+        }).then(res => res.json())
+          .then(data => {
+              if (data.success && data.driver) {
+                  this.savedPin = data.driver.id;
+                  localStorage.setItem('thaitrain_driver_pin_v2', this.savedPin);
+                  if (window.ManagementSystem) {
+                      window.ManagementSystem.driverPin = this.savedPin;
+                      window.ManagementSystem.save();
+                  }
+              }
+          }).catch(err => console.error("Auto-register failed:", err));
     },
     
     open: function() {
