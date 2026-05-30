@@ -1,6 +1,6 @@
 {
   "name": "thai-train-simulator",
-  "version": "1.0.8-z",
+  "version": "1.0.8-1",
   "description": "เกมจำลองการขับรถไฟเสมือนจริงของไทย",
   "author": "Kittiphong <Phutthipong.Ongrak@gmail.com>",
   "main": "main.js",

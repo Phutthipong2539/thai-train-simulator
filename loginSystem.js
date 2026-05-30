@@ -11,8 +11,8 @@ window.LoginSystem = {
     focusedButtonIndex: 0,
     
     init: function() {
-        const storedName = localStorage.getItem('thaitrain_driver_name_global');
-        const storedPin = localStorage.getItem('thaitrain_driver_pin_global');
+        const storedName = localStorage.getItem('thaitrain_driver_name_v2');
+        const storedPin = localStorage.getItem('thaitrain_driver_pin_v2');
         if (storedName) {
             this.savedName = storedName;
             this.savedPin = storedPin || "001";
@@ -30,6 +30,10 @@ window.LoginSystem = {
             window.ManagementSystem.isCheckedIn = true;
             window.isCheckedIn = true; 
             window.ManagementSystem.save();
+        }
+        if (window.MultiplayerSystem) {
+            window.MultiplayerSystem.playerName = this.savedName;
+            window.MultiplayerSystem.emitData(); // Update remote players immediately
         }
     },
     
@@ -75,7 +79,8 @@ window.LoginSystem = {
         list.innerHTML = `<h2 style="margin-top:0; color: #ffcc00;">ลงทะเบียนพนักงานขับรถ</h2>`;
         
         const input = document.createElement('input');
-        input.type = "text";
+        input.type = "search";
+        input.setAttribute('role', 'searchbox');
         input.placeholder = "พิมพ์ชื่อของคุณที่นี่ (ไทยหรืออังกฤษก็ได้)";
         input.style.width = '90%';
         input.style.padding = '15px';
@@ -153,18 +158,25 @@ window.LoginSystem = {
         btnConfirm.innerText = "> ตกลง (บันทึกชื่อ) <";
         btnConfirm.onclick = async () => {
             if (window.speak) window.speak("กำลังบันทึกข้อมูลและออกรหัสพนักงานกับเซิร์ฟเวอร์ออนไลน์...");
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
             try {
                 const res = await fetch("http://119.59.103.185:45000/api/drivers/register", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name: this.tempName })
+                    body: JSON.stringify({ name: this.tempName }),
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
                 const result = await res.json();
+                
                 if (result.success) {
                     this.savedName = result.name;
                     this.savedPin = result.id;
-                    localStorage.setItem('thaitrain_driver_name_global', this.savedName);
-                    localStorage.setItem('thaitrain_driver_pin_global', this.savedPin);
+                    localStorage.setItem('thaitrain_driver_name_v2', this.savedName);
+                    localStorage.setItem('thaitrain_driver_pin_v2', this.savedPin);
                     
                     this.syncWithManagement();
                     this.close();
@@ -175,9 +187,19 @@ window.LoginSystem = {
                     this.renderInputStep();
                 }
             } catch (err) {
-                console.error("Online registration failed:", err);
-                if (window.speak) window.speak("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อลงทะเบียนได้ กรุณาเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่อีกครั้งครับ");
-                this.renderConfirmStep();
+                clearTimeout(timeoutId);
+                console.warn("Online registration failed or timed out:", err);
+                
+                // --- OFFLINE FALLBACK ---
+                if (window.speak) window.speak("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ ระบบจะออกรหัสชั่วคราวให้ก่อนครับ และจะเชื่อมต่อใหม่อัตโนมัติในภายหลัง");
+                
+                this.savedName = this.tempName;
+                this.savedPin = "999"; // Temporary ID
+                window.needsOnlineRegistration = true; // Flag for auto-reconnect
+                
+                // ไม่เซฟลง localStorage เพื่อให้ต้องขอรหัสจริงในอนาคต
+                this.syncWithManagement();
+                this.close();
             }
         };
         list.appendChild(btnConfirm);
