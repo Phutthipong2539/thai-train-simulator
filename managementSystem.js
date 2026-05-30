@@ -313,8 +313,8 @@ window.ManagementSystem = {
         list.innerHTML = `
             <h3>บริหารจัดการบริษัท</h3>
             <div class="stat-card" style="margin-bottom:15px; border: 1px solid var(--accent-color); background: rgba(0, 242, 255, 0.05); padding: 15px; border-radius:12px;">
-                <div style="font-size:18px; font-weight:bold; color:var(--success);">💰 ยอดเงินคงเหลือ: ${this.wallet.toLocaleString()} บาท</div>
-                <div style="font-size:16px; margin-top:5px; color:var(--text-primary);">🔧 สภาพเฉลี่ย: ${avgCondition}%</div>
+                <div style="font-size:18px; font-weight:bold; color:var(--success);"> ยอดเงินคงเหลือ: ${this.wallet.toLocaleString()} บาท</div>
+                <div style="font-size:16px; margin-top:5px; color:var(--text-primary);"> สภาพเฉลี่ย: ${avgCondition}%</div>
                 <hr style="border: 0; height: 1px; background: rgba(255,255,255,0.2); margin: 10px 0;">
                 <div style="font-size:14px; display:flex; justify-content:space-between; font-weight:bold;">
                     <span style="color:${profitColor};">ผลประกอบการสุทธิ:</span> 
@@ -557,7 +557,7 @@ window.ManagementSystem = {
         
         if (window.speak) window.speak("คู่มือการเล่นเกม มีหลายหัวข้อให้เลือกอ่านครับ");
         
-        list.innerHTML = `<h3>📖 คู่มือการเล่น (How to Play)</h3>
+        list.innerHTML = `<h3> คู่มือการเล่น (How to Play)</h3>
         <p style="color:var(--text-primary); font-size:14px; margin-bottom:15px;">เลือกหัวข้อที่คุณต้องการศึกษาเพื่อดูรายละเอียดการเล่นในแต่ละส่วน</p>`;
 
         const topics = [
@@ -673,7 +673,7 @@ window.ManagementSystem = {
 
         list.innerHTML = `<h3>ระบบพนักงานขับรถ</h3>`;
         if (this.driverName && this.driverPin) {
-            list.innerHTML += `<p style="color: #ffcc00; font-size: 20px; margin: 10px 0;">🧑‍✈️ พนักงานขับรถ: คุณ ${this.driverName} (รหัสพนักงาน: ${this.driverPin})</p>`;
+            list.innerHTML += `<p style="color: #ffcc00; font-size: 20px; margin: 10px 0;">‍️ พนักงานขับรถ: คุณ ${this.driverName} (รหัสพนักงาน: ${this.driverPin})</p>`;
         }
 
         // ปุ่มเช็คพนักงานที่กำลังออนไลน์
@@ -1115,9 +1115,9 @@ window.ManagementSystem = {
         
         if (window.speak) window.speak("เข้าสู่ห้องเก็บอุปกรณ์บนรถไฟ");
 
-        list.innerHTML = `<h3>🔧 ห้องเก็บอุปกรณ์บนรถไฟ (ซ่อมระหว่างทาง)</h3>
+        list.innerHTML = `<h3> ห้องเก็บอุปกรณ์บนรถไฟ (ซ่อมระหว่างทาง)</h3>
         <div style="font-size:16px; margin-bottom:15px; color:var(--text-primary); background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
-            💼 อะไหล่ในคลังสำรองของคุณ:<br>
+             อะไหล่ในคลังสำรองของคุณ:<br>
             • หลอดไฟ: ${this.inventory.lightBulbs} ชุด | • พัดลมแอร์: ${this.inventory.acFans} ตัว<br>
             • ผ้าเบรก: ${this.inventory.brakePads} ชุด | • น้ำมันเครื่อง: ${this.inventory.engineOil} แกลลอน | • สารหล่อเย็น: ${this.inventory.coolant || 0} ขวด<br>
             • GS Battery: ${this.inventory.gsBatteries} ลูก | • Yuasa: ${this.inventory.yuasaBatteries} ลูก | • Saft: ${this.inventory.saftBatteries} ลูก
@@ -1269,7 +1269,7 @@ window.ManagementSystem = {
         const battBrand = state.batteryBrand || "Yuasa Heavy Duty";
         const battH = state.batteryHealth !== undefined ? state.batteryHealth.toFixed(1) : "100.0";
         const battV = state.batteryVoltage !== undefined ? state.batteryVoltage.toFixed(1) : "74.0";
-        btnCurrentBatt.innerText = `🔋 แบตเตอรี่ติดตั้งอยู่: ${battBrand} (สภาพ: ${battH}%, แรงดัน: ${battV}V)`;
+        btnCurrentBatt.innerText = ` แบตเตอรี่ติดตั้งอยู่: ${battBrand} (สภาพ: ${battH}%, แรงดัน: ${battV}V)`;
         btnCurrentBatt.onclick = () => {
             if (window.speak) window.speak(`ปัจจุบันติดตั้งแบตเตอรี่ ${battBrand} สภาพเหลืออยู่ ${battH} เปอร์เซ็นต์ แรงดัน ${battV} โวลต์ครับ หากต้องการเปลี่ยน ให้กดปุ่มยี่ห้อแบตเตอรี่ในรายการถัดไปครับ`);
         };
@@ -1288,7 +1288,7 @@ window.ManagementSystem = {
             const btnGS = document.createElement('button');
             btnGS.className = 'job-card';
             btnGS.style.borderColor = 'var(--success)';
-            btnGS.innerText = `⚡ ติดตั้ง GS Battery จากคลัง (คลังมี: ${this.inventory.gsBatteries} ลูก)`;
+            btnGS.innerText = ` ติดตั้ง GS Battery จากคลัง (คลังมี: ${this.inventory.gsBatteries} ลูก)`;
             btnGS.onclick = () => {
                 const refund = getBatteryRefund(state.batteryBrand, state.batteryHealth);
                 this.inventory.gsBatteries--;
@@ -1311,7 +1311,7 @@ window.ManagementSystem = {
             const btnYuasa = document.createElement('button');
             btnYuasa.className = 'job-card';
             btnYuasa.style.borderColor = 'var(--success)';
-            btnYuasa.innerText = `⚡ ติดตั้ง Yuasa Heavy Duty จากคลัง (คลังมี: ${this.inventory.yuasaBatteries} ลูก)`;
+            btnYuasa.innerText = ` ติดตั้ง Yuasa Heavy Duty จากคลัง (คลังมี: ${this.inventory.yuasaBatteries} ลูก)`;
             btnYuasa.onclick = () => {
                 const refund = getBatteryRefund(state.batteryBrand, state.batteryHealth);
                 this.inventory.yuasaBatteries--;
@@ -1334,7 +1334,7 @@ window.ManagementSystem = {
             const btnSaft = document.createElement('button');
             btnSaft.className = 'job-card';
             btnSaft.style.borderColor = 'var(--success)';
-            btnSaft.innerText = `⚡ ติดตั้ง Saft Ni-Cd Premium จากคลัง (คลังมี: ${this.inventory.saftBatteries} ลูก)`;
+            btnSaft.innerText = ` ติดตั้ง Saft Ni-Cd Premium จากคลัง (คลังมี: ${this.inventory.saftBatteries} ลูก)`;
             btnSaft.onclick = () => {
                 const refund = getBatteryRefund(state.batteryBrand, state.batteryHealth);
                 this.inventory.saftBatteries--;
@@ -1369,11 +1369,11 @@ window.ManagementSystem = {
         
         if (window.speak) window.speak("เข้าสู่ศูนย์สั่งซื้ออะไหล่รถไฟ เลื่อนลูกศรเพื่อเลือกซื้อสินค้า");
 
-        list.innerHTML = `<h3>🛒 ศูนย์สั่งซื้ออะไหล่รถไฟ (Store)</h3>
+        list.innerHTML = `<h3> ศูนย์สั่งซื้ออะไหล่รถไฟ (Store)</h3>
         <div class="stat-card" style="margin-bottom:15px; border: 1px solid var(--accent-color); background: rgba(0, 242, 255, 0.05); padding: 12px; border-radius:12px;">
-            <div style="font-size:17px; font-weight:bold; color:var(--success);">💰 เงินสดบริษัท: ${this.wallet.toLocaleString()} บาท</div>
+            <div style="font-size:17px; font-weight:bold; color:var(--success);"> เงินสดบริษัท: ${this.wallet.toLocaleString()} บาท</div>
             <div style="font-size:14px; margin-top:5px; color:var(--text-primary);">
-                📦 ไอเทมทั้งหมด 28 รายการ - เลื่อนดูปุ่มด้านล่างเพื่อเช็คจำนวนในคลังและกดซื้อ
+                 ไอเทมทั้งหมด 28 รายการ - เลื่อนดูปุ่มด้านล่างเพื่อเช็คจำนวนในคลังและกดซื้อ
             </div>
         </div>`;
 
@@ -1462,7 +1462,7 @@ window.ManagementSystem = {
         
         if (window.speak) window.speak("เมนูขายเศษเหล็กและอะไหล่เก่า");
 
-        list.innerHTML = `<h3>💰 ขายเศษเหล็กและอะไหล่เก่า</h3>
+        list.innerHTML = `<h3> ขายเศษเหล็กและอะไหล่เก่า</h3>
         <div style="font-size:16px; margin-bottom:15px; color:var(--text-primary); background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
             กระเป๋าเงินบริษัท: ${this.wallet.toLocaleString()} บาท
         </div>`;
@@ -1578,7 +1578,7 @@ window.ManagementSystem = {
             const btnCurrent = document.createElement('button');
             btnCurrent.className = 'job-card';
             btnCurrent.style.borderColor = '#ff4444';
-            btnCurrent.innerText = `🔋 ขายแบตเตอรี่ที่ใช้อยู่ปัจจุบัน [${brand}] (สภาพ: ${health.toFixed(1)}%) - คืนเงินตามสภาพ ${refund.toLocaleString()} บาท`;
+            btnCurrent.innerText = ` ขายแบตเตอรี่ที่ใช้อยู่ปัจจุบัน [${brand}] (สภาพ: ${health.toFixed(1)}%) - คืนเงินตามสภาพ ${refund.toLocaleString()} บาท`;
             btnCurrent.onclick = () => {
                 this.addIncome(refund, `ขายแบตเตอรี่ที่ติดตั้งอยู่ยี่ห้อ ${brand}`);
                 // เปลี่ยนเป็นไม่มีแบตเตอรี่ (หรือแบตเดด สภาพ 0% และประจุ 0V)
@@ -1934,7 +1934,7 @@ window.ManagementSystem = {
         if (window.speak) window.speak("เปิดหน้าต่างสนับสนุนผู้พัฒนาเกม");
 
         list.innerHTML = `
-            <h3 style="color: #ff4da6;">❤️ สนับสนุนผู้พัฒนาเกม (บริจาค)</h3>
+            <h3 style="color: #ff4da6;">️ สนับสนุนผู้พัฒนาเกม (บริจาค)</h3>
             <div style="text-align: center; margin: 20px 0; padding: 15px; border: 1px solid var(--accent-color); border-radius: 12px; background: rgba(255, 255, 255, 0.05);">
                 <p style="font-size: 16px; margin-bottom: 15px; color: var(--text-primary);">
                     ขอบคุณที่ชื่นชอบและสนับสนุนเกม Thai Train Simulator นะครับ
@@ -1988,15 +1988,15 @@ window.ManagementSystem = {
         const availableCredit = this.kkLoanLimit - this.kkLoanDebt;
 
         list.innerHTML = `
-            <h3 style="color: #ffd700;">🏦 สถาบันการเงิน KK Money</h3>
+            <h3 style="color: #ffd700;"> สถาบันการเงิน KK Money</h3>
             <div style="margin-bottom:15px; border: 1px solid #ffd700; background: rgba(255, 215, 0, 0.05); padding: 15px; border-radius:12px;">
-                <div style="font-size:16px; color:var(--text-primary); margin-bottom:5px;">💵 ทุนจดทะเบียนบริษัท: 10,000,000,000 บาท</div>
+                <div style="font-size:16px; color:var(--text-primary); margin-bottom:5px;"> ทุนจดทะเบียนบริษัท: 10,000,000,000 บาท</div>
                 <hr style="border: 0; height: 1px; background: rgba(255,255,255,0.2); margin: 10px 0;">
-                <div style="font-size:18px; font-weight:bold; color:#4CAF50;">🟢 วงเงินอนุมัติสูงสุด: ${this.kkLoanLimit.toLocaleString()} บาท</div>
-                <div style="font-size:18px; font-weight:bold; color:#ff9800;">🟡 วงเงินกู้คงเหลือ: ${Math.max(0, availableCredit).toLocaleString()} บาท</div>
-                <div style="font-size:18px; font-weight:bold; color:#ff4444;">🔴 ยอดหนี้ค้างชำระ: ${this.kkLoanDebt.toLocaleString()} บาท</div>
+                <div style="font-size:18px; font-weight:bold; color:#4CAF50;"> วงเงินอนุมัติสูงสุด: ${this.kkLoanLimit.toLocaleString()} บาท</div>
+                <div style="font-size:18px; font-weight:bold; color:#ff9800;"> วงเงินกู้คงเหลือ: ${Math.max(0, availableCredit).toLocaleString()} บาท</div>
+                <div style="font-size:18px; font-weight:bold; color:#ff4444;"> ยอดหนี้ค้างชำระ: ${this.kkLoanDebt.toLocaleString()} บาท</div>
                 <div style="font-size:14px; color:var(--text-primary); margin-top:10px;">
-                    📈 ยอดชำระสะสมเพื่อขยายวงเงิน: ${this.kkRepayHistory.toLocaleString()} / 100,000 บาท
+                     ยอดชำระสะสมเพื่อขยายวงเงิน: ${this.kkRepayHistory.toLocaleString()} / 100,000 บาท
                 </div>
             </div>
             <div style="font-size:14px; margin-bottom:15px; color:#aaa;">
